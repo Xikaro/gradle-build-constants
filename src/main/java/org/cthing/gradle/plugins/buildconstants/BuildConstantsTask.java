@@ -42,7 +42,7 @@ public abstract class BuildConstantsTask extends SourceTask {
         setGroup("Generate Constants");
 
         getSourceAccess().convention(SourceAccess.PUBLIC);
-        getIncludePredefinedConstants().convention(true);
+        getIncludePredefinedConstants().convention(Boolean.TRUE);
         getBuildTime().convention(System.currentTimeMillis());
     }
 
