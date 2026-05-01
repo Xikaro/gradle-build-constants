@@ -34,17 +34,21 @@ import org.gradle.api.tasks.TaskExecutionException;
  */
 public abstract class BuildConstantsTask extends SourceTask {
 
+    private static final String BUILD_DATE_FORMAT = "yyyy-MM-dd'T'HH:mm:ss'Z'";
+    private static final String BUILD_DATE_TIME_ZONE = "UTC";
     private static final Logger LOGGER = Logging.getLogger(BuildConstantsTask.class);
 
     public BuildConstantsTask() {
         setGroup("Generate Constants");
 
         getSourceAccess().convention(SourceAccess.PUBLIC);
+        getIncludePredefinedConstants().convention(true);
         getBuildTime().convention(System.currentTimeMillis());
     }
 
     /**
      * Obtains the fully qualified name for the generated class (e.g. org.cthing.myapp.PropertyConstants).
+
      *
      * @return Fully qualified class name.
      */
@@ -68,6 +72,15 @@ public abstract class BuildConstantsTask extends SourceTask {
     public abstract Property<SourceAccess> getSourceAccess();
 
     /**
+     * Indicates whether the pre-defined project and build information constants should be generated.
+     * The default is {@code true}.
+     *
+     * @return {@code true} to generate the pre-defined constants.
+     */
+    @Input
+    public abstract Property<Boolean> getIncludePredefinedConstants();
+
+    /**
      * Obtains the name of the project. The default is obtained from {@link Project#getName()}.
      *
      * @return Name of the project
@@ -77,6 +90,7 @@ public abstract class BuildConstantsTask extends SourceTask {
 
     /**
      * Obtains the version of the project. The default is obtained from {@link Project#getVersion()}.
+
      *
      * @return Version of the project
      */
@@ -148,8 +162,6 @@ public abstract class BuildConstantsTask extends SourceTask {
      */
     private void writeConstants(final PrintWriter writer, final String packageName, final String className) {
         final String modifier = getSourceAccess().get() == SourceAccess.PUBLIC ? "public " : "";
-        final SimpleDateFormat dateFormat = new SimpleDateFormat("yyyy-MM-dd'T'HH:mm:ss'Z'");
-        dateFormat.setTimeZone(TimeZone.getTimeZone("UTC"));
 
         writer.format("""
                       //
@@ -163,15 +175,22 @@ public abstract class BuildConstantsTask extends SourceTask {
 
                       """, packageName, modifier, className);
 
-        writer.format("    %sstatic final String PROJECT_NAME = \"%s\";%n", modifier, getProjectName().get());
-        writer.format("    %sstatic final String PROJECT_VERSION = \"%s\";%n", modifier, getProjectVersion().get());
-        writer.format("    %sstatic final String PROJECT_GROUP = \"%s\";%n", modifier, getProjectGroup().get());
-        writer.format("    %sstatic final long BUILD_TIME = %dL;%n", modifier, getBuildTime().get());
-        writer.format("    %sstatic final String BUILD_DATE = \"%s\";%n", modifier,
-                      dateFormat.format(new Date(getBuildTime().get())));
+
+        if (getIncludePredefinedConstants().get()) {
+            final SimpleDateFormat dateFormat = new SimpleDateFormat(BUILD_DATE_FORMAT);
+            dateFormat.setTimeZone(TimeZone.getTimeZone(BUILD_DATE_TIME_ZONE));
+
+            writer.format("    %sstatic final String PROJECT_NAME = \"%s\";%n", modifier, getProjectName().get());
+            writer.format("    %sstatic final String PROJECT_VERSION = \"%s\";%n", modifier, getProjectVersion().get());
+            writer.format("    %sstatic final String PROJECT_GROUP = \"%s\";%n", modifier, getProjectGroup().get());
+            writer.format("    %sstatic final long BUILD_TIME = %dL;%n", modifier, getBuildTime().get());
+            writer.format("    %sstatic final String BUILD_DATE = \"%s\";%n", modifier,
+                          dateFormat.format(new Date(getBuildTime().get())));
+        }
 
         getAdditionalConstants().keySet().get().stream().sorted().forEach(key -> {
             final Object value = getAdditionalConstants().getting(key).getOrNull();
+
             if (value != null) {
                 if (value instanceof Integer v) {
                     writer.format("    %sstatic final int %s = %d;%n", modifier, key, v);
