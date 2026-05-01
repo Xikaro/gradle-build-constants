@@ -39,11 +39,13 @@ public final class Constants {
 | `BUILD_TIME`      | Time of the build in milliseconds since the [Unix Epoch](https://en.wikipedia.org/wiki/Unix_time) | `buildTime`      | `System.currentTimeMillis` |
 | `BUILD_DATE`      | Time of the build in [ISO 8601](https://en.wikipedia.org/wiki/ISO_8601) format                    | `buildTime`      | `System.currentTimeMillis` |
 
-Additional [user-defined constants](#user-defined-constants) can be specified.
+Additional [user-defined constants](#user-defined-constants) can be specified. The pre-defined constants can be
+disabled by setting `includePredefinedConstants` to `false`.
 
 ## Usage
 
 The plugin is available from the
+
 [Gradle Plugin Portal](https://plugins.gradle.org/plugin/org.cthing.build-constants) and can be
 applied to a Gradle project using the `plugins` block.
 
@@ -71,6 +73,7 @@ By default, the generated class and constants are given public access. The plugi
 generate the class and constants with package private access.
 
 ```kotlin
+
 import org.cthing.gradle.plugins.buildconstants.SourceAccess
 
 plugins {
@@ -86,9 +89,23 @@ tasks {
 }
 ```
 
+The pre-defined constants (`PROJECT_NAME`, `PROJECT_VERSION`, `PROJECT_GROUP`, `BUILD_TIME` and `BUILD_DATE`) can be
+disabled when only user-defined constants are needed.
+
+```kotlin
+tasks {
+    generateBuildConstants {
+        classname = "org.cthing.test.MyConstants"
+        includePredefinedConstants = false
+        additionalConstants.put("ABC", "def")
+    }
+}
+```
+
 ### User-Defined Constants
 
 Additional user-defined constants can be specified:
+
 ```kotlin
 tasks {
     generateBuildConstants {

@@ -8,6 +8,7 @@ package org.cthing.gradle.plugins.buildconstants;
 import java.io.IOException;
 import java.lang.reflect.Field;
 import java.lang.reflect.Modifier;
+import java.net.URISyntaxException;
 import java.net.URL;
 import java.net.URLClassLoader;
 import java.nio.charset.StandardCharsets;
@@ -136,11 +137,36 @@ public class PluginIntegTest {
         verifyConstant(cls, "xyz", 17, SourceAccess.PUBLIC);
     }
 
+    @ParameterizedTest
+    @MethodSource("gradleVersionProvider")
+    public void testDisablePredefinedConstants(final String gradleVersion) throws IOException {
+        copyProject("disable-predefined-constants");
+
+        final BuildResult result = createGradleRunner(gradleVersion).build();
+        verifyBuild(result);
+
+        final Class<?> cls = loadClass();
+        assertThat(cls).isPublic().isFinal();
+
+        verifyNoConstant(cls, "PROJECT_NAME");
+        verifyNoConstant(cls, "PROJECT_VERSION");
+        verifyNoConstant(cls, "PROJECT_GROUP");
+        verifyNoConstant(cls, "BUILD_TIME");
+        verifyNoConstant(cls, "BUILD_DATE");
+        verifyConstant(cls, "ABC", "def", SourceAccess.PUBLIC);
+    }
+
     private void copyProject(final String projectName) throws IOException {
         final URL projectUrl = getClass().getResource("/" + projectName);
         assertThat(projectUrl).isNotNull();
-        PathUtils.copyDirectory(Path.of(projectUrl.getPath()), this.projectDir);
+
+        try {
+            PathUtils.copyDirectory(Path.of(projectUrl.toURI()), this.projectDir);
+        } catch (final URISyntaxException ex) {
+            throw new IOException(ex);
+        }
     }
+
 
     private GradleRunner createGradleRunner(final String gradleVersion) {
         return GradleRunner.create()
@@ -170,10 +196,15 @@ public class PluginIntegTest {
         assertThat(classFile).isRegularFile();
     }
 
+    private void verifyNoConstant(final Class<?> cls, final String fieldName) {
+        assertThat(Stream.of(cls.getDeclaredFields()).map(Field::getName).toList()).doesNotContain(fieldName);
+    }
+
     private void verifyConstant(final Class<?> cls, final String fieldName, final Object fieldValue,
                                     final SourceAccess access) throws IOException {
         try {
             assertThat(cls).hasDeclaredFields(fieldName);
+
 
             final Field field = cls.getDeclaredField(fieldName);
             assertThat(Modifier.isStatic(field.getModifiers())).isTrue();
